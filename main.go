@@ -1,27 +1,49 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rrawrriw/angular-sauth-handler"
+	"github.com/rrawrriw/sj-handler"
 )
 
 const (
-	AppNamePrefix = "SJ"
+	SessionColl = "Session"
 )
 
 func main() {
-	host := os.Getenv("SJ_HOST")
-	port := os.Getenv("SJ_PORT")
-	srvRes := host + ":" + port
+	app, err := sj.NewApp("SJ")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
-	publicDir := os.Getenv("SJ_PUBLIC_DIR")
+	fmt.Println(app.Specs)
+
+	singIn := aauth.AngularSignIn(findUser(app))
+	//singedIn := aauth.AngularAuth(app.DB(), SessionColl)
+
+	host := app.Specs.Host
+	port := app.Specs.Port
+	srvRes := host + ":" + strconv.Itoa(port)
+
+	publicDir := app.Specs.PublicDir
 	htmlDir := path.Join(publicDir, "html")
 
 	srv := gin.Default()
-	srv.Use(Serve("/", LocalFile(htmlDir, false)))
+	srv.Use(sj.Serve("/", sj.LocalFile(htmlDir, false)))
 	srv.Static("/public", publicDir)
+	srv.GET("/SignIn/:name/:pass", singIn)
 
 	srv.Run(srvRes)
+}
+
+func findUser(app sj.AppContext) aauth.FindUser {
+	return func(name string) (aauth.User, error) {
+		return sj.FindUser(app.DB(), name)
+	}
 }
