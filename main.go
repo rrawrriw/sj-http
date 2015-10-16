@@ -25,6 +25,7 @@ func main() {
 	fmt.Println(app.Specs)
 
 	singIn := aauth.AngularSignIn(findUser(app))
+	newUser := sj.NewAppHandler(sj.NewUserHandler, app)
 	//singedIn := aauth.AngularAuth(app.DB(), SessionColl)
 
 	host := app.Specs.Host
@@ -38,6 +39,7 @@ func main() {
 	srv.Use(sj.Serve("/", sj.LocalFile(htmlDir, false)))
 	srv.Static("/public", publicDir)
 	srv.GET("/SignIn/:name/:pass", singIn)
+	srv.POST("/User", newUser)
 
 	srv.Run(srvRes)
 }
