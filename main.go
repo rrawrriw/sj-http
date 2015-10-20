@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rrawrriw/angular-sauth-handler"
@@ -24,9 +25,16 @@ func main() {
 
 	fmt.Println(app.Specs)
 
-	singIn := aauth.AngularSignIn(findUser(app))
+	sessionColl := app.DB().C(SessionColl)
+	expireTime := time.Duration(48 * time.Hour)
+	signIn := aauth.AngularSignIn(sessionColl, findUser(app), aauth.NewSha512Password, expireTime)
+	signedIn := aauth.AngularAuth(app.DB(), SessionColl)
+
 	newUser := sj.NewAppHandler(sj.NewUserHandler, app)
-	//singedIn := aauth.AngularAuth(app.DB(), SessionColl)
+	newSeries := sj.NewAppHandler(sj.NewSeriesHandler, app)
+	removeSeries := sj.NewAppHandler(sj.RemoveSeriesHandler, app)
+
+	readSeriesOfUser := sj.NewAppHandler(sj.ReadSeriesOfUserHandler, app)
 
 	host := app.Specs.Host
 	port := app.Specs.Port
@@ -38,8 +46,11 @@ func main() {
 	srv := gin.Default()
 	srv.Use(sj.Serve("/", sj.LocalFile(htmlDir, false)))
 	srv.Static("/public", publicDir)
-	srv.GET("/SignIn/:name/:pass", singIn)
+	srv.GET("/SignIn/:name/:pass", signIn)
 	srv.POST("/User", newUser)
+	srv.POST("/Series", signedIn, newSeries)
+	srv.DELETE("/Series/:id", signedIn, removeSeries)
+	srv.GET("/SeriesOfUser", signedIn, readSeriesOfUser)
 
 	srv.Run(srvRes)
 }
